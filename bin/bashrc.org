@@ -56,7 +56,7 @@ export WAVES_POST=$WAVES_UTIL/postProcessing
 ## Is this a D.D.x version of OpenFoam. Needed to distinguish 2.2.0 and 2.2.x
 truncatedVersion=${WM_PROJECT_VERSION%.x}
 
-if [ "$WM_PROJECT_VERSION" == "$truncatedVersion" ]
+if [[ "$WM_PROJECT_VERSION" == "$truncatedVersion" ]]
 then
     xVersion=0
 else
@@ -80,14 +80,14 @@ export EXTBRANCH
 ## Is it the new foam-extend class?
 FOAMEXTENDPROJECT=0
 
-if [ $WM_PROJECT == "foam" ]
+if [[ $WM_PROJECT == "foam" ]]
 then
     FOAMEXTENDPROJECT=1
 fi
 
 export FOAMEXTENDPROJECT
 
-if [ "$FOAMEXTENDPROJECT" == "1" ]
+if [[ "$FOAMEXTENDPROJECT" == "1" ]]
 then
     EXTBRANCH=$FOAMEXTENDPROJECT
     export EXTBRANCH
@@ -108,7 +108,7 @@ fi
 export OFPLUSBRANCH
 
 ### PRINT INFORMATION
-if [ "$printVariables" == "1" ]
+if [[ "$printVariables" == "1" ]]
 then
     echo ""
     echo "====================================="
