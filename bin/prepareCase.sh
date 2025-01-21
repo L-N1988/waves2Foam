@@ -76,7 +76,7 @@ fi
 
 ### COPY TRANSPORTPROPERTIES
 if [[ $WM_PROJECT_VERSION_NUMBER -lt 230 || $FOAMEXTENDPROJECT -eq 1 ]]; then
-  cp ../../commonFiles/transportProperties.16 constant/transportProperties
+  cp $WAVES_TUT/commonFiles/transportProperties.16 constant/transportProperties
 else
-  cp ../../commonFiles/transportProperties.23 constant/transportProperties
+  cp $WAVES_TUT/commonFiles/transportProperties.23 constant/transportProperties
 fi
