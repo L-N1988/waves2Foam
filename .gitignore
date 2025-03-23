@@ -9,6 +9,7 @@
 *.orig
 *.orig[0-9][0-9]
 \#*\#
+*.log
 
 # file-browser settings - anywhere
 .directory
@@ -84,4 +85,6 @@ doc/Doxygen/DTAGS
 /.cproject
 /.project
 
+.vscode
+*diffChange.sh
 # end-of-file
