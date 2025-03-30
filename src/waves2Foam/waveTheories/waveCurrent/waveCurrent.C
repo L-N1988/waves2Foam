@@ -202,7 +202,7 @@ vector waveCurrent::U
              - 1.0/8.0*mag(g_)*sqr(H_)/(cel*h_);
 
     // Current velocity in x dirction
-    Uhorz += U_;
+    Uhorz += U_.x();
 
     // First order contribution
     scalar Uvert = - PI_*H_/period_ *
