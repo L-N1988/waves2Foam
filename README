@@ -1,3 +1,29 @@
+# Installation tips
+- use gcc/g++/gfortran in version *9*
+    - the default 11 version in Ubuntu 22.04 will fail (test under OF-v1912)
+```bash
+sudo apt update
+sudo apt install gcc-9 g++-9 gfortran-9
+
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 90
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110  # Optional: if gcc-11 is present
+sudo update-alternatives --set gcc /usr/bin/gcc-9
+
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 90
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110  # Optional: if g++-11 is present
+sudo update-alternatives --set g++ /usr/bin/g++-9
+
+sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-9 90
+sudo update-alternatives --install /usr/bin/gfortran gfortran /usr/bin/gfortran-11 110  # Optional: if gfortran-11 is present
+sudo update-alternatives --set gfortran /usr/bin/gfortran-9
+```
+
+```bash
+gcc --version
+g++ --version
+gfortran --version
+```
+
 ===== INSTALLATION =====
 
 1. Make sure that Gnu Scientific Library is installed, e.g. using the Package Manager system

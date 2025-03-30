@@ -202,7 +202,7 @@ vector waveCurrent::U
              - 1.0/8.0*mag(g_)*sqr(H_)/(cel*h_);
 
     // Current velocity in x dirction
-    Uhorz += U_;
+    Uhorz += U_.x();
 
     // First order contribution
     scalar Uvert = - PI_*H_/period_ *
@@ -212,6 +212,9 @@ vector waveCurrent::U
     // Second order contribution
     Uvert += - 3.0/16.0*cel*sqr(K_*H_)*Foam::sinh(2*K_*(Z + h_))
             /Foam::pow(Foam::sinh(K_*h_), 4.0)*Foam::sin(2*arg);
+
+    // Current velocity in x dirction
+    Uvert += U_.y();
 
     // Multiply by the time stepping factor
     Uvert *= factor(time);
