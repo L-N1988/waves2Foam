@@ -9,11 +9,10 @@ if [ -x "$exec" ]
 then
     . $exec
 else
-    echo "The file $WAVES_DIR/bin/prepareCase.sh is not executable."
-    echo "Make the file executable before continuing."
+    echo "Make the file $WAVES_DIR/bin/prepareCase.sh executable."
     echo
-    echo "Exiting tutorial case."
-    exit 1
+    chmod +x $exec
+    . $exec
 fi
 
 # Set application name
