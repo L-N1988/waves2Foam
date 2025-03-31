@@ -213,7 +213,7 @@ vector waveCurrent::U
     Uvert += - 3.0/16.0*cel*sqr(K_*H_)*Foam::sinh(2*K_*(Z + h_))
             /Foam::pow(Foam::sinh(K_*h_), 4.0)*Foam::sin(2*arg);
 
-    // Current velocity in x dirction
+    // Current velocity in y dirction
     Uvert += U_.y();
 
     // Multiply by the time stepping factor
