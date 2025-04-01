@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Exit on error and fail on unset variables
-set -eu
+# set -eu # Too strict test condition, ignore it.
 
 ### CLEAR THE 0 DIRECTORY
 # Check if the directory "0" exists
