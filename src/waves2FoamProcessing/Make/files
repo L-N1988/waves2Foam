@@ -6,6 +6,10 @@ $(waveProp)/setWaveProperties.C
 current=current
 $(waveProp)/$(current)/potentialCurrentProperties/potentialCurrentProperties.C
 
+/* Wave current type */
+waveCurrent=waveCurrent
+$(waveProp)/$(waveCurrent)/waveCurrentProperties/waveCurrentProperties.C
+
 /* Solitary type */
 solitary=solitary
 $(waveProp)/$(solitary)/solitaryFirstProperties/solitaryFirstProperties.C
