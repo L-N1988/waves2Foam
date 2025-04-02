@@ -188,8 +188,8 @@ vector waveCurrent::U
 ) const
 {
     scalar Z(returnZ(x));
-    scalar cel(omega_/K_);
-    scalar arg(omega_*time - (k_ & x) + phi_);
+    scalar cel(omegac_/K_);
+    scalar arg(omegac_*time - (k_ & x) + phi_);
 
     // First order contribution
     scalar Uhorz = PI_*H_/period_ *
