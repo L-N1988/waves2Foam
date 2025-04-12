@@ -56,10 +56,10 @@ waveTheory::waveTheory
 
 #if OFPLUSBRANCH==1
     #if OFVERSION<1812
-	    g_( uniformDimensionedVectorField
-	        (
-	            mesh_.thisDb().lookupObject<uniformDimensionedVectorField>("g")
-	        ).value() ),
+        g_( uniformDimensionedVectorField
+            (
+                mesh_.thisDb().lookupObject<uniformDimensionedVectorField>("g")
+            ).value() ),
     #else
         g_(meshObjects::gravity::New(mesh_.thisDb().time()).value()),
     #endif
