@@ -8,7 +8,7 @@ $(waveProp)/$(current)/potentialCurrentProperties/potentialCurrentProperties.C
 
 /* Wave current type */
 waveCurrent=waveCurrent
-$(waveProp)/$(waveCurrent)/waveCurrentProperties/waveCurrentProperties.C
+$(waveProp)/$(waveCurrent)/waveCurrentProperties.C
 
 /* Solitary type */
 solitary=solitary
