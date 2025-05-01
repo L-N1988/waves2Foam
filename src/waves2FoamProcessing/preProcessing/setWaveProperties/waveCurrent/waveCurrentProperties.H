@@ -67,6 +67,7 @@ private:
     scalar period_;
     scalar omega_;
     scalar depth_;
+    vector U_;
 
     stokesFirstProperties sfp_;
 
@@ -86,6 +87,8 @@ public:
         // Method
 
         virtual  void set( Ostream&);
+        scalar linearWaveNumberOne() const;
+
 
 };
 

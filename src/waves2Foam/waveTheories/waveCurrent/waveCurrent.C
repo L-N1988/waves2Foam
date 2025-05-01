@@ -51,18 +51,20 @@ waveCurrent::waveCurrent(
       period_(2 * PI_ / omega_),
       phi_(readScalar(coeffDict_.lookup("phi"))),
       k_(vector(coeffDict_.lookup("waveNumber"))),
+      k1_(vector(coeffDict_.lookup("waveNumberOne"))),
       U_(vector(coeffDict_.lookup("U"))),
-      omegac_(omega_ + (k_ & U_)),
+    //   omegac_(omega_ + (k_ & U_)),
       K_(mag(k_)),
+      K1_(mag(k1_)),
       Tsoft_(coeffDict_.lookupOrDefault<scalar>("Tsoft", period_)),
       debug_(Switch(coeffDict_.lookup("debug")))
 {
-    checkWaveDirection(k_);
+    checkWaveDirection(k1_);
 
     if
     (
-        H_/2.0 - 4.0*1.0/16.0*K_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K_*h_),3.0)
-        - 1.0/Foam::tanh(K_*h_)) < 0
+        H_/2.0 - 4.0*1.0/16.0*K1_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K1_*h_),3.0)
+        - 1.0/Foam::tanh(K1_*h_)) < 0
     )
     {
         if (debug_)
@@ -74,8 +76,8 @@ waveCurrent::waveCurrent(
             << endl << "a_1 < 4 a_2, being first and second order"
             << " amplitudes respectively." << endl << endl;
             Info << "a1 = " << H_/2.0 << " , a2 = "
-                 << (1.0/16.0*K_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K_*h_),3.0)
-                    - 1.0/Foam::tanh(K_*h_))) << endl;
+                 << (1.0/16.0*K1_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K1_*h_),3.0)
+                    - 1.0/Foam::tanh(K1_*h_))) << endl;
         }
     }
 }
@@ -108,18 +110,11 @@ scalar waveCurrent::eta
     const scalar& time
 ) const
 {
-    scalar arg(omegac_*time - (k_ & x) + phi_);
+    scalar arg(omega_*time - (k1_ & x) + phi_);
 
     scalar eta = (
-                     H_/2.0*Foam::cos(arg) // First order contribution.
-                   // Second order contribution.
-                   + 1.0/16.0*K_*sqr(H_)
-                   *(
-                        3.0/Foam::pow(Foam::tanh(K_*h_),3.0)
-                      - 1.0/Foam::tanh(K_*h_)
-                    )
-                   *Foam::cos(2.0*arg)
-                 )*factor(time)  // Hot-starting.
+                     H_ / 2.0 * (1 - (k1_ & U_) / omega_) * Foam::cos(arg) // First order contribution.
+                 ) * factor(time)  // Hot-starting.
                  + seaLevel_;      // Adding sea level.
 
     return eta;
@@ -161,17 +156,11 @@ scalar waveCurrent::pExcess
 
 	// Get arguments and local coordinate system
     scalar Z(returnZ(x));
-    scalar arg(omegac_*time - (k_ & x) + phi_);
+    scalar arg(omega_*time - (k1_ & x) + phi_);
 
     // First order contribution
-    res = rhoWater_*mag(g_)*H_/2.0*Foam::cosh(K_*(Z + h_))
-        /Foam::cosh(K_*h_)*Foam::cos(arg);
-
-    // Second order contribution
-    res += 1.0/8.0*rhoWater_*mag(g_)*K_*Foam::sqr(H_)/Foam::sinh(2.0*K_*h_)
-        *((3.0*Foam::cosh(2.0*K_*(Z + h_))/Foam::sqr(Foam::sinh(K_*h_)) - 1.0)*Foam::cos(2.0*arg)
-         - Foam::cosh(2*K_*(Z + h_)) + 1);
-
+    res = rhoWater_*mag(g_)*H_/2.0*Foam::cosh(K1_*(Z + h_))
+        /Foam::cosh(K1_*h_)*Foam::cos(arg);
     // Apply the ramping-factor
     res *= factor(time);
     res += referencePressure();
@@ -188,30 +177,21 @@ vector waveCurrent::U
 ) const
 {
     scalar Z(returnZ(x));
-    scalar cel(omegac_/K_);
-    scalar arg(omegac_*time - (k_ & x) + phi_);
+    scalar cel(omega_/K1_); // FIXME: ????
+    scalar arg(omega_*time - (k1_ & x) + phi_);
 
     // First order contribution
-    scalar Uhorz = PI_*H_/period_ *
-                   Foam::cosh(K_*(Z + h_))/Foam::sinh(K_*h_) *
+    scalar Uhorz = mag(g_) * (H_ / 2) / omega_ * k1_.x() * 
+                   Foam::cosh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
                    Foam::cos(arg);
-
-    // Second order contribution
-    Uhorz += 3.0/16.0*cel*Foam::sqr(K_*H_)*Foam::cosh(2*K_*(Z + h_))
-            /Foam::pow(Foam::sinh(K_*h_),4.0)*Foam::cos(2*arg)
-             - 1.0/8.0*mag(g_)*sqr(H_)/(cel*h_);
 
     // Current velocity in x dirction
     Uhorz += U_.x();
 
     // First order contribution
-    scalar Uvert = - PI_*H_/period_ *
-                   Foam::sinh(K_*(Z + h_))/Foam::sinh(K_*h_) *
+    scalar Uvert = mag(g_) * (H_ / 2) / omega_ * K1_ * 
+                   Foam::sinh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
                    Foam::sin(arg);
-
-    // Second order contribution
-    Uvert += - 3.0/16.0*cel*sqr(K_*H_)*Foam::sinh(2*K_*(Z + h_))
-            /Foam::pow(Foam::sinh(K_*h_), 4.0)*Foam::sin(2*arg);
 
     // Current velocity in y dirction
     Uvert += U_.y();
@@ -222,7 +202,7 @@ vector waveCurrent::U
 
     // Generate the velocity vector
     // Note "-" because of "g" working in the opposite direction
-    return Uhorz*k_/K_ - Uvert*direction_;
+    return Uhorz*k1_/K1_ - Uvert*direction_;
 }
 
 

@@ -89,8 +89,10 @@ protected:
         scalar period_;
         scalar phi_;
         vector k_;
+        vector k1_;
         vector U_;
         scalar K_;
+        scalar K1_;
         scalar Tsoft_;
 
         bool debug_;
