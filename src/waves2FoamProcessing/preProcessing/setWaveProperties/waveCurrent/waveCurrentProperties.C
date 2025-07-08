@@ -71,23 +71,27 @@ waveCurrentProperties::waveCurrentProperties
 void waveCurrentProperties::set(Ostream& os)
 {
     scalar k = sfp_.linearWaveNumber();
-    scalar k1 = linearWaveNumberOne();
 
     // Write the beginning of the sub-dictionary
     writeBeginning( os );
 
     // Write the already given parameters
-    writeGiven( os, "waveType" );
+    writeGiven( os, "waveType" ); // TODO: add wave type selector
     writeGiven( os, "U");
 
-    if (dict_.found( "Tsoft" ))
-    {
-        writeGiven( os, "Tsoft");
-    }
+    if (dict_.found( "Tsoft" )) { writeGiven( os, "Tsoft"); }
 
     if (dict_.found( "currentType" ))
     {
         writeGiven( os, "currentType");
+        word currentType(word(dict_.lookup("currentType")));
+        if (currentType == "log")
+        {
+            if (dict_.found( "nu" )) { writeGiven( os, "nu"); }
+            if (dict_.found( "ks" )) { writeGiven( os, "ks"); }
+            if (dict_.found( "kappa" )) { writeGiven( os, "kappa"); }
+            if (dict_.found( "Ad" )) { writeGiven( os, "Ad"); }
+        }
     }
 
     writeGiven( os, "depth" );
@@ -103,7 +107,6 @@ void waveCurrentProperties::set(Ostream& os)
         // direction *= k;
 
         writeDerived(os, "waveNumber", direction * k);
-        writeDerived(os, "waveNumberOne", direction * k1);
         writeDerived(os, "omega", sfp_.omega());
     }
 
@@ -142,60 +145,6 @@ void waveCurrentProperties::set(Ostream& os)
           << endl;
     }
 }
-
-scalar waveCurrentProperties::linearWaveNumberOne() const
-{
-    scalar lower(0.0);
-
-    scalar upper = Foam::max
-        (
-            4.0*PI_/( period_*Foam::sqrt( Foam::mag(G_)*depth_)),
-            2.0*PI_/( Foam::pow( period_, 2.0))
-        );
-
-    scalar middle(0.5*(lower + upper) );
-
-    scalar tanhMax(100);
-
-    scalar valLower = Foam::pow(omega_ - middle * U_.x(), 2.0)
-        - Foam::mag(G_)*lower*Foam::tanh( Foam::min(lower*depth_, tanhMax));
-    scalar valUpper = Foam::pow(omega_ - middle * U_.x(), 2.0)
-        - Foam::mag(G_)*upper*Foam::tanh( Foam::min(upper*depth_, tanhMax));
-    scalar valMiddle = Foam::pow(omega_ - middle * U_.x(), 2.0)
-        - Foam::mag(G_)*middle*Foam::tanh( Foam::min(middle*depth_, tanhMax));
-
-    while (true)
-    {
-        if (Foam::sign( valLower ) == Foam::sign( valMiddle ))
-        {
-            lower    = middle;
-            valLower = valMiddle;
-        }
-        else
-        {
-            upper    = middle;
-            valUpper = valMiddle;
-        }
-
-        middle = 0.5*( lower + upper );
-
-        valMiddle = Foam::pow(omega_ - middle * U_.x(), 2.0)
-            - Foam::mag(G_)*middle
-            *Foam::tanh( Foam::min(middle*depth_, tanhMax) );
-
-        if
-        (
-            Foam::mag(valMiddle) < 1.0e-13 ||
-            Foam::mag(valLower - valUpper)/middle < 1.0e-13
-        )
-        {
-            break;
-        }
-    }
-
-    return middle;
-}
-
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 

@@ -52,23 +52,25 @@ waveCurrent::waveCurrent(
       period_(2 * PI_ / omega_),
       phi_(readScalar(coeffDict_.lookup("phi"))),
       k_(vector(coeffDict_.lookup("waveNumber"))),
-      k1_(vector(coeffDict_.lookup("waveNumberOne"))),
-      currentType_(coeffDict_.lookupOrDefault<word>("currentType", "constant")), // valid current type: constant, linear, log (TODO)
-      U_(vector(coeffDict_.lookup("U"))),
+      U_(vector(coeffDict_.lookup("U"))), // in constant and linear current, U is mean current velocity; in log shear current, U is friction velocity
     //   omegac_(omega_ + (k_ & U_)),
       K_(mag(k_)),
-      K1_(mag(k1_)),
       Tsoft_(coeffDict_.lookupOrDefault<scalar>("Tsoft", period_)),
-      wallDist_(wallDist::New(mesh_).y()),
+      currentType_(coeffDict_.lookupOrDefault<word>("currentType", "constant")), // valid current type: constant, linear, log 
+      nu_(coeffDict_.lookupOrDefault("nu", 1.002e-6)),
+      ks_(coeffDict_.lookupOrDefault("ks", 1.25e-3)),
+      kappa_(coeffDict_.lookupOrDefault<scalar>("kappa", 0.41)),
+      Ad_(coeffDict_.lookupOrDefault<scalar>("Ad", 25.0)),
+      wallDist_(wallDist::New(mesh_).y()), // distance with respect to bottom wall
       cellC_(mesh_.C()),
       debug_(Switch(coeffDict_.lookup("debug")))
-{
-    checkWaveDirection(k1_);
+    {
+        checkWaveDirection(k_);
 
     if
     (
-        H_/2.0 - 4.0*1.0/16.0*K1_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K1_*h_),3.0)
-        - 1.0/Foam::tanh(K1_*h_)) < 0
+        H_/2.0 - 4.0*1.0/16.0*K_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K_*h_),3.0)
+        - 1.0/Foam::tanh(K_*h_)) < 0
     )
     {
         if (debug_)
@@ -80,8 +82,8 @@ waveCurrent::waveCurrent(
             << endl << "a_1 < 4 a_2, being first and second order"
             << " amplitudes respectively." << endl << endl;
             Info << "a1 = " << H_/2.0 << " , a2 = "
-                 << (1.0/16.0*K1_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K1_*h_),3.0)
-                    - 1.0/Foam::tanh(K1_*h_))) << endl;
+                 << (1.0/16.0*K_*sqr(H_)*(3.0/Foam::pow(Foam::tanh(K_*h_),3.0)
+                    - 1.0/Foam::tanh(K_*h_))) << endl;
         }
     }
 }
@@ -114,10 +116,10 @@ scalar waveCurrent::eta
     const scalar& time
 ) const
 {
-    scalar arg(omega_*time - (k1_ & x) + phi_);
+    scalar arg(omega_*time - (k_ & x) + phi_);
 
     scalar eta = (
-                     H_ / 2.0 * (1 - (k1_ & currentU(x, time)) / omega_) * Foam::cos(arg) // First order contribution.
+                     H_ / 2.0 * (1 - (k_ & currentU(x, time)) / omega_) * Foam::cos(arg) // First order contribution.
                  ) * factor(time)  // Hot-starting.
                  + seaLevel_;      // Adding sea level.
 
@@ -160,11 +162,11 @@ scalar waveCurrent::pExcess
 
 	// Get arguments and local coordinate system
     scalar Z(returnZ(x));
-    scalar arg(omega_*time - (k1_ & x) + phi_);
+    scalar arg(omega_*time - (k_ & x) + phi_);
 
     // First order contribution
-    res = rhoWater_*mag(g_)*H_/2.0*Foam::cosh(K1_*(Z + h_))
-        /Foam::cosh(K1_*h_)*Foam::cos(arg);
+    res = rhoWater_*mag(g_)*H_/2.0*Foam::cosh(K_*(Z + h_))
+        /Foam::cosh(K_*h_)*Foam::cos(arg);
     // Apply the ramping-factor
     res *= factor(time);
     res += referencePressure();
@@ -181,20 +183,20 @@ vector waveCurrent::U
 ) const
 {
     scalar Z(returnZ(x));
-    scalar cel(omega_/K1_); // FIXME: ????
-    scalar arg(omega_*time - (k1_ & x) + phi_);
+    scalar cel(omega_/K_); // FIXME: wtf?
+    scalar arg(omega_*time - (k_ & x) + phi_);
 
     // First order contribution
-    scalar Uhorz = mag(g_) * (H_ / 2) / omega_ * k1_.x() * 
-                   Foam::cosh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
+    scalar Uhorz = mag(g_) * (H_ / 2) / omega_ * k_.x() * 
+                   Foam::cosh(K_*(Z + h_))/Foam::cosh(K_*h_) *
                    Foam::cos(arg);
 
     // Current velocity in x dirction
     Uhorz += currentU(x, time).x();
 
     // First order contribution
-    scalar Uvert = mag(g_) * (H_ / 2) / omega_ * K1_ * 
-                   Foam::sinh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
+    scalar Uvert = mag(g_) * (H_ / 2) / omega_ * K_ * 
+                   Foam::sinh(K_*(Z + h_))/Foam::cosh(K_*h_) *
                    Foam::sin(arg);
 
     // Current velocity in y dirction
@@ -206,7 +208,7 @@ vector waveCurrent::U
 
     // Generate the velocity vector
     // Note "-" because of "g" working in the opposite direction
-    return Uhorz*k1_/K1_ - Uvert*direction_;
+    return Uhorz*k_/K_ - Uvert*direction_;
 }
 
 vector waveCurrent::currentU
@@ -228,27 +230,30 @@ vector waveCurrent::currentU
         temp2 *=scalar(0.0);
         scalar yPlus_ = 0.0;
         scalar distriFactor = 0.0; // distribution factor/weight
-        scalar shearU_ = 0.0;
+        vector shearU_ = vector(0,0,0);
 
         // Slow but consistent code
         forAll(temp1, index)
         {
-            yPlus = wallDist_[index] / h_;
+            yPlus = wallDist_[index] / h_; // Not use, just for consistant
 
             distriFactor_ = 1.0;
 
-            temp1[index] = distriFactor_;
+            // https://www.tfd.chalmers.se/~hani/kurser/OS_CFD_2021/KorayDenizGoral/Report_KorayDenizGoral.pdf
+            // page 47 line 147 code is wrong, 
+            // temp1[0] or say temp[0] should be zero instead of vanDriest_(approx 1).
             temp2[index] = distriFactor_;
 
-            if (index > 0) // Valid integration index
+            if (index > 0) // Skip the first temp1 entry
             {
-                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(wallDist_[index]/h_ - wallDist_[index-1]/h_);
+                yPlus_minus = wallDist_[index-1] / h_; // Not use, just for consistant
+                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus - yPlus_minus);
             }
 
             if (cellC_[index] == x)
             {
-                shearU_ = 2.0*Uf_*temp1[index];
-                return shearU_*vector(1.0,0,0); // only x direction has non-zero velocity
+                shearU_ = 2.0*U_*temp1[index];
+                return shearU_;
             }
         }
         // Never reach here
@@ -256,10 +261,53 @@ vector waveCurrent::currentU
             << "Bad mesh, can not find cell at x = " << x << "." << exit(FatalError);
     } else if (currentType_ == "log")
     {
-        return U_;
+        // linear distributed current velocity, bottom is zero, top is 2U_
+        volScalarField temp1=wallDist_;
+        volScalarField temp2=wallDist_;
+
+        temp1 *=scalar(0.0);
+        temp2 *=scalar(0.0);
+        scalar yPlus_ = 0.0;
+        scalar distriFactor = 0.0; // distribution factor/weight
+
+        scalar ksPlus_= ks_* U_ / nu_;
+        scalar deltayPlus_ = 0.9*(Foam::sqrt(ksPlus_)-ksPlus_*Foam::exp(-ksPlus_/6.0));
+        vector shearU_ = vector(0,0,0);
+
+        // Slow but consistent code
+        forAll(temp1, index)
+        {
+            yPlus = wallDist_[index] * U_ / nu_;
+
+            distriFactor_ = 1.0/(1.0+Foam::sqrt(1.0+4.0*Foam::pow(kappa_,2.0)*Foam::pow(yPlus_+deltayPlus_,2.0) \ 
+                        *Foam::pow(1.0-Foam::exp(-(yPlus_+deltayPlus_)/Ad_),2.0)));
+
+            // https://www.tfd.chalmers.se/~hani/kurser/OS_CFD_2021/KorayDenizGoral/Report_KorayDenizGoral.pdf
+            // page 47 line 147 code is wrong, 
+            // temp1[0] or say temp[0] should be zero instead of vanDriest_(approx 1).
+            temp2[index] = distriFactor_;
+
+            if (index > 0) // Skip the first temp1 entry
+            {
+                yPlus_minus = wallDist_[index-1] * U_ / nu_;
+                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus - yPlus_minus);
+            }
+
+            if (cellC_[index] == x)
+            {
+                shearU_ = 2.0*U_*temp1[index];
+                return shearU_;
+            }
+        }
+        // Never reach here
+        FatalErrorInFunction
+            << "Bad mesh, can not find current velocity about cell at x = " << x << "." << exit(FatalError);
     } else 
     {
         // Raise error, invalid current type.
+        FatalErrorInFunction
+            << "Invalid current type: " << currentType_ << ".\n"
+            << "Valid current type: {constant, linear, log}.\n" << exit(FatalError);
     }
 }
 

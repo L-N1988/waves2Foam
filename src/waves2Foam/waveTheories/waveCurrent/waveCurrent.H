@@ -82,17 +82,19 @@ class waveCurrent
 protected:
 
     // Protected data
-        scalar H_;
-        scalar h_;
+        scalar H_; // wave height
+        scalar h_; // water depth
         scalar omega_;
         scalar omegac_;
         scalar period_;
         scalar phi_;
         vector k_;
-        vector k1_;
         vector U_;
         scalar K_;
-        scalar K1_;
+        scalar nu_;
+        scalar ks_;
+        scalar kappa_;
+        scalar Ad_;
         scalar Tsoft_;
         word currentType_;
         const volScalarField& wallDist_;
