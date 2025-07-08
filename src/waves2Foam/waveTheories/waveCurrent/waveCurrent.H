@@ -105,6 +105,8 @@ protected:
     // Protected member functions
 
         scalar factor(const scalar&) const;
+
+        virtual vector currentU(const point&, const scalar&) const;
 public:
 
     //- Runtime type information
