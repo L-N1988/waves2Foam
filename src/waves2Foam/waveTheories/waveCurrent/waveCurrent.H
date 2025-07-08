@@ -94,6 +94,9 @@ protected:
         scalar K_;
         scalar K1_;
         scalar Tsoft_;
+        word currentType_;
+        const volScalarField& wallDist_;
+        const volScalarField& cellC_;
 
         bool debug_;
 

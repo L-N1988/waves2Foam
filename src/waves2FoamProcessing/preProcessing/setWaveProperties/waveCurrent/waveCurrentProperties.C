@@ -60,7 +60,7 @@ waveCurrentProperties::waveCurrentProperties
 
     period_ = readScalar( dict.lookup("period") );
     depth_  = readScalar( dict.lookup("depth") );
-    U_ = vector( dict_.lookup("U") );
+    U_ = vector( dict_.lookup("U") ); // dict_ is same as dict, dict_ inherent from setWaveProperties, dict is passing argument.
     omega_  = 2.0*PI_/period_ ;
 }
 
@@ -83,6 +83,11 @@ void waveCurrentProperties::set(Ostream& os)
     if (dict_.found( "Tsoft" ))
     {
         writeGiven( os, "Tsoft");
+    }
+
+    if (dict_.found( "currentType" ))
+    {
+        writeGiven( os, "currentType");
     }
 
     writeGiven( os, "depth" );

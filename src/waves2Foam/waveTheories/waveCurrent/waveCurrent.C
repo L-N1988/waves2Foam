@@ -26,6 +26,7 @@ License
 
 #include "waveCurrent.H"
 #include "addToRunTimeSelectionTable.H"
+#include "wallDist.H"
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
@@ -52,11 +53,14 @@ waveCurrent::waveCurrent(
       phi_(readScalar(coeffDict_.lookup("phi"))),
       k_(vector(coeffDict_.lookup("waveNumber"))),
       k1_(vector(coeffDict_.lookup("waveNumberOne"))),
+      currentType_(coeffDict_.lookupOrDefault<word>("currentType", "constant")), // valid current type: constant, linear, log (TODO)
       U_(vector(coeffDict_.lookup("U"))),
     //   omegac_(omega_ + (k_ & U_)),
       K_(mag(k_)),
       K1_(mag(k1_)),
       Tsoft_(coeffDict_.lookupOrDefault<scalar>("Tsoft", period_)),
+      wallDist_(wallDist::New(mesh_).y()),
+      cellC_(mesh_.C()),
       debug_(Switch(coeffDict_.lookup("debug")))
 {
     checkWaveDirection(k1_);
@@ -113,7 +117,7 @@ scalar waveCurrent::eta
     scalar arg(omega_*time - (k1_ & x) + phi_);
 
     scalar eta = (
-                     H_ / 2.0 * (1 - (k1_ & U_) / omega_) * Foam::cos(arg) // First order contribution.
+                     H_ / 2.0 * (1 - (k1_ & currentU(x, time)) / omega_) * Foam::cos(arg) // First order contribution.
                  ) * factor(time)  // Hot-starting.
                  + seaLevel_;      // Adding sea level.
 
@@ -186,7 +190,7 @@ vector waveCurrent::U
                    Foam::cos(arg);
 
     // Current velocity in x dirction
-    Uhorz += U_.x();
+    Uhorz += currentU(x, time).x();
 
     // First order contribution
     scalar Uvert = mag(g_) * (H_ / 2) / omega_ * K1_ * 
@@ -194,7 +198,7 @@ vector waveCurrent::U
                    Foam::sin(arg);
 
     // Current velocity in y dirction
-    Uvert += U_.y();
+    Uvert += currentU(x, time).y();
 
     // Multiply by the time stepping factor
     Uvert *= factor(time);
@@ -205,6 +209,59 @@ vector waveCurrent::U
     return Uhorz*k1_/K1_ - Uvert*direction_;
 }
 
+vector waveCurrent::currentU
+(
+    const point& x,
+    const scalar& time
+) const
+{
+    if (currentType_ == "constant")
+    {
+        return U_;
+    } else if (currentType_ == "linear")
+    {
+        // linear distributed current velocity, bottom is zero, top is 2U_
+        volScalarField temp1=wallDist_;
+        volScalarField temp2=wallDist_;
+
+        temp1 *=scalar(0.0);
+        temp2 *=scalar(0.0);
+        scalar yPlus_ = 0.0;
+        scalar distriFactor = 0.0; // distribution factor/weight
+        scalar shearU_ = 0.0;
+
+        // Slow but consistent code
+        forAll(temp1, index)
+        {
+            yPlus = wallDist_[index] / h_;
+
+            distriFactor_ = 1.0;
+
+            temp1[index] = distriFactor_;
+            temp2[index] = distriFactor_;
+
+            if (index > 0) // Valid integration index
+            {
+                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(wallDist_[index]/h_ - wallDist_[index-1]/h_);
+            }
+
+            if (cellC_[index] == x)
+            {
+                shearU_ = 2.0*Uf_*temp1[index];
+                return shearU_*vector(1.0,0,0); // only x direction has non-zero velocity
+            }
+        }
+        // Never reach here
+        FatalErrorInFunction
+            << "Bad mesh, can not find cell at x = " << x << "." << exit(FatalError);
+    } else if (currentType_ == "log")
+    {
+        return U_;
+    } else 
+    {
+        // Raise error, invalid current type.
+    }
+}
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
 
