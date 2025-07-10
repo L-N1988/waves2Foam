@@ -89,8 +89,10 @@ protected:
         scalar period_;
         scalar phi_;
         vector k_;
+        vector k1_;
         vector U_;
         scalar K_;
+        scalar K1_;
         scalar nu_;
         scalar ks_;
         scalar kappa_;
@@ -107,6 +109,14 @@ protected:
         scalar factor(const scalar&) const;
 
         virtual vector currentU(const point&, const scalar&) const;
+
+        virtual scalar waveCurrent::waveNumberOne
+        (
+            const scalar h, // water depth
+            const scalar T, // wave period
+            const scalar Us = 0
+        ) const;
+
 public:
 
     //- Runtime type information

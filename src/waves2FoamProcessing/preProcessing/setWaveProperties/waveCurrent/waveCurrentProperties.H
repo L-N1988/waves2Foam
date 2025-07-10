@@ -87,8 +87,6 @@ public:
         // Method
 
         virtual  void set( Ostream&);
-        scalar linearWaveNumberOne() const;
-
 
 };
 

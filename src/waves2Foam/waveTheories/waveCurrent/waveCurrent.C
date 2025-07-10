@@ -49,14 +49,14 @@ waveCurrent::waveCurrent(
       H_(readScalar(coeffDict_.lookup("height"))),
       h_(readScalar(coeffDict_.lookup("depth"))),
       omega_(readScalar(coeffDict_.lookup("omega"))),
-      period_(2 * PI_ / omega_),
+      period_(mathematical::twoPi / omega_),
       phi_(readScalar(coeffDict_.lookup("phi"))),
       k_(vector(coeffDict_.lookup("waveNumber"))),
-      U_(vector(coeffDict_.lookup("U"))), // in constant and linear current, U is mean current velocity; in log shear current, U is friction velocity
+      U_(vector(coeffDict_.lookup("U"))), // In uniform current, U is mean current velocity; in linear current, U is surface velocity; in log shear current, U is friction velocity.
     //   omegac_(omega_ + (k_ & U_)),
       K_(mag(k_)),
       Tsoft_(coeffDict_.lookupOrDefault<scalar>("Tsoft", period_)),
-      currentType_(coeffDict_.lookupOrDefault<word>("currentType", "constant")), // valid current type: constant, linear, log 
+      currentType_(coeffDict_.lookupOrDefault<word>("currentType", "uniform")), // valid current type: uniform, linear, log 
       nu_(coeffDict_.lookupOrDefault("nu", 1.002e-6)),
       ks_(coeffDict_.lookupOrDefault("ks", 1.25e-3)),
       kappa_(coeffDict_.lookupOrDefault<scalar>("kappa", 0.41)),
@@ -86,6 +86,19 @@ waveCurrent::waveCurrent(
                     - 1.0/Foam::tanh(K_*h_))) << endl;
         }
     }
+    if (currentType_ == "uniform") {
+        k1_ = waveNumberOne(h_, period_);
+    } else if (currentType_ == "linear") {
+        k1_ = waveNumberOne(h_, period_, U_.x());
+    } else if (currentType_ == "log") {
+        k1_ = k_;
+    } else {
+        // Raise error, invalid current type.
+        FatalErrorInFunction
+            << "Invalid current type: " << currentType_ << ".\n"
+            << "Valid current type: {uniform, linear, log}.\n" << exit(FatalError);
+    }
+    K1_ = mag(k1_);
 }
 
 
@@ -103,7 +116,7 @@ scalar waveCurrent::factor(const scalar& time) const
     scalar factor(1.0);
     if (Tsoft_ > 0.0)
     {
-        factor = Foam::sin(2*PI_/(4.0*Tsoft_)*Foam::min(Tsoft_, time));
+        factor = Foam::sin(mathematical::twoPi/(4.0*Tsoft_)*Foam::min(Tsoft_, time));
     }
 
     return factor;
@@ -116,40 +129,14 @@ scalar waveCurrent::eta
     const scalar& time
 ) const
 {
-    scalar arg(omega_*time - (k_ & x) + phi_);
+    scalar arg(omega_*time - (k1_ & x) + phi_);
 
-    scalar eta = (
-                     H_ / 2.0 * (1 - (k_ & currentU(x, time)) / omega_) * Foam::cos(arg) // First order contribution.
-                 ) * factor(time)  // Hot-starting.
-                 + seaLevel_;      // Adding sea level.
+    scalar eta = H_ / 2.0 * Foam::cos(arg) // First order contribution.
+                 * factor(time)  // Hot-starting.
+                 + seaLevel_;    // Adding sea level.
 
     return eta;
 }
-
-
-//scalar waveCurrent::ddxPd
-//(
-//    const point& x,
-//    const scalar& time,
-//    const vector& unitVector
-//) const
-//{
-//    scalar Z(returnZ(x));
-//    scalar arg(omega_*time - (k_ & x) + phi_);
-//
-//    scalar ddxPd(0);
-//
-//    ddxPd = (
-//                rhoWater_*mag(g_)*K_*H_/2.0*Foam::cosh(K_*(Z + h_))
-//                /Foam::cosh(K_*h_)*Foam::sin(arg)
-//                + 1/4*rhoWater_*mag(g_)*pow(K_,2)*pow(H_,2)
-//                /Foam::sinh(2*K_*h_)
-//                *( 3*Foam::cosh(2*K_*(Z + h_))/pow(Foam::sinh(K_*h_),2) - 1)
-//                *Foam::sin(2*arg)
-//            )*factor(time);
-//
-//    return ddxPd;
-//}
 
 
 scalar waveCurrent::pExcess
@@ -162,11 +149,11 @@ scalar waveCurrent::pExcess
 
 	// Get arguments and local coordinate system
     scalar Z(returnZ(x));
-    scalar arg(omega_*time - (k_ & x) + phi_);
+    scalar arg(omega_*time - (k1_ & x) + phi_);
 
     // First order contribution
-    res = rhoWater_*mag(g_)*H_/2.0*Foam::cosh(K_*(Z + h_))
-        /Foam::cosh(K_*h_)*Foam::cos(arg);
+    res = rhoWater_*mag(g_)*H_/2.0*Foam::cosh(K1_*(Z + h_))
+        /Foam::cosh(K1_*h_)*Foam::cos(arg);
     // Apply the ramping-factor
     res *= factor(time);
     res += referencePressure();
@@ -183,20 +170,21 @@ vector waveCurrent::U
 ) const
 {
     scalar Z(returnZ(x));
-    scalar cel(omega_/K_); // FIXME: wtf?
-    scalar arg(omega_*time - (k_ & x) + phi_);
+    scalar cel(omega_/K1_); // FIXME: wtf?
+    scalar arg(omega_*time - (k1_ & x) + phi_);
 
     // First order contribution
-    scalar Uhorz = mag(g_) * (H_ / 2) / omega_ * k_.x() * 
-                   Foam::cosh(K_*(Z + h_))/Foam::cosh(K_*h_) *
+    scalar Uhorz = (H_ / 2) * (omega_ - k1_ & U_) *
+                   Foam::cosh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
                    Foam::cos(arg);
 
     // Current velocity in x dirction
     Uhorz += currentU(x, time).x();
 
     // First order contribution
-    scalar Uvert = mag(g_) * (H_ / 2) / omega_ * K_ * 
-                   Foam::sinh(K_*(Z + h_))/Foam::cosh(K_*h_) *
+    // Note "-" because of "g" working in the opposite direction
+    scalar Uvert = - (H_ / 2) * (omega_ - k1_ & U_) *
+                   Foam::sinh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
                    Foam::sin(arg);
 
     // Current velocity in y dirction
@@ -208,7 +196,7 @@ vector waveCurrent::U
 
     // Generate the velocity vector
     // Note "-" because of "g" working in the opposite direction
-    return Uhorz*k_/K_ - Uvert*direction_;
+    return Uhorz*k1_/K1_ - Uvert*direction_;
 }
 
 vector waveCurrent::currentU
@@ -217,7 +205,7 @@ vector waveCurrent::currentU
     const scalar& time
 ) const
 {
-    if (currentType_ == "constant")
+    if (currentType_ == "uniform")
     {
         return U_;
     } else if (currentType_ == "linear")
@@ -252,7 +240,7 @@ vector waveCurrent::currentU
 
             if (cellC_[index] == x)
             {
-                shearU_ = 2.0*U_*temp1[index];
+                shearU_ = U_*temp1[index];
                 return shearU_;
             }
         }
@@ -307,8 +295,28 @@ vector waveCurrent::currentU
         // Raise error, invalid current type.
         FatalErrorInFunction
             << "Invalid current type: " << currentType_ << ".\n"
-            << "Valid current type: {constant, linear, log}.\n" << exit(FatalError);
+            << "Valid current type: {uniform, linear, log}.\n" << exit(FatalError);
     }
+}
+
+vector waveCurrent::waveNumberOne
+(
+    const scalar h, // water depth
+    const scalar T, // wave period
+    const scalar Us // surface velocity in x direction
+) const
+{
+    scalar k1_x = k_.x();
+    scalar dummy = omega_ - k1_x * Us; // Only for x direction condition
+    scalar vorticity = Us / h;
+
+    for (int i=1; i<=1000; i++)
+    {
+        dummy = (G_*k1_x / dummy - vorticity) * tanh(k1_x * h);
+        k1_x = (omega_ - dummy) / Us;
+    }
+
+    return vector(k1_x, 0, 0);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
