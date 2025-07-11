@@ -87,9 +87,9 @@ waveCurrent::waveCurrent(
         }
     }
     if (currentType_ == "uniform") {
-        k1_ = waveNumberOne(h_, period_);
+        k1_ = waveNumberOne(h_, period_, U_.x(), U_.x());
     } else if (currentType_ == "linear") {
-        k1_ = waveNumberOne(h_, period_, U_.x());
+        k1_ = waveNumberOne(h_, period_, U_.x(), 0);
     } else if (currentType_ == "log") {
         k1_ = k_;
     } else {
@@ -303,12 +303,13 @@ vector waveCurrent::waveNumberOne
 (
     const scalar h, // water depth
     const scalar T, // wave period
-    const scalar Us // surface velocity in x direction
+    const scalar Us, // surface velocity in x direction
+    const scalar Ub, // bottom velocity in x direction
 ) const
 {
-    scalar k1_x = k_.x();
+    scalar k1_x = k_.x(); // Initial guess of wave number
     scalar dummy = omega_ - k1_x * Us; // Only for x direction condition
-    scalar vorticity = Us / h;
+    scalar vorticity = (Us - Ub) / h;
 
     for (int i=1; i<=1000; i++)
     {

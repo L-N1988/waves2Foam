@@ -112,9 +112,10 @@ protected:
 
         virtual scalar waveCurrent::waveNumberOne
         (
-            const scalar h, // water depth
-            const scalar T, // wave period
-            const scalar Us = 0
+            const scalar h,  // water depth
+            const scalar T,  // wave period
+            const scalar Us, // surface current velocity
+            const scalar Ub  // bottom current velocity
         ) const;
 
 public:
