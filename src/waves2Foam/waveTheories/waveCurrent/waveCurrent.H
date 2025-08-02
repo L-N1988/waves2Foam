@@ -100,7 +100,7 @@ protected:
         scalar Tsoft_;
         word currentType_;
         const volScalarField& wallDist_;
-        const volScalarField& cellC_;
+        const volVectorField& cellC_;
 
         bool debug_;
 
@@ -110,7 +110,7 @@ protected:
 
         virtual vector currentU(const point&, const scalar&) const;
 
-        virtual scalar waveCurrent::waveNumberOne
+        virtual vector waveNumberOne
         (
             const scalar h,  // water depth
             const scalar T,  // wave period

@@ -49,7 +49,7 @@ waveCurrent::waveCurrent(
       H_(readScalar(coeffDict_.lookup("height"))),
       h_(readScalar(coeffDict_.lookup("depth"))),
       omega_(readScalar(coeffDict_.lookup("omega"))),
-      period_(mathematical::twoPi / omega_),
+      period_(2 * PI_ / omega_),
       phi_(readScalar(coeffDict_.lookup("phi"))),
       k_(vector(coeffDict_.lookup("waveNumber"))),
       U_(vector(coeffDict_.lookup("U"))), // In uniform current, U is mean current velocity; in linear current, U is surface velocity; in log shear current, U is friction velocity.
@@ -116,7 +116,7 @@ scalar waveCurrent::factor(const scalar& time) const
     scalar factor(1.0);
     if (Tsoft_ > 0.0)
     {
-        factor = Foam::sin(mathematical::twoPi/(4.0*Tsoft_)*Foam::min(Tsoft_, time));
+        factor = Foam::sin(2 * PI_/(4.0*Tsoft_)*Foam::min(Tsoft_, time));
     }
 
     return factor;
@@ -174,7 +174,7 @@ vector waveCurrent::U
     scalar arg(omega_*time - (k1_ & x) + phi_);
 
     // First order contribution
-    scalar Uhorz = (H_ / 2) * (omega_ - k1_ & U_) *
+    scalar Uhorz = (H_ / 2) * (omega_ - (k1_ & U_)) *
                    Foam::cosh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
                    Foam::cos(arg);
 
@@ -183,7 +183,7 @@ vector waveCurrent::U
 
     // First order contribution
     // Note "-" because of "g" working in the opposite direction
-    scalar Uvert = - (H_ / 2) * (omega_ - k1_ & U_) *
+    scalar Uvert = - (H_ / 2) * (omega_ - (k1_ & U_)) *
                    Foam::sinh(K1_*(Z + h_))/Foam::cosh(K1_*h_) *
                    Foam::sin(arg);
 
@@ -217,13 +217,14 @@ vector waveCurrent::currentU
         temp1 *=scalar(0.0);
         temp2 *=scalar(0.0);
         scalar yPlus_ = 0.0;
-        scalar distriFactor = 0.0; // distribution factor/weight
+        scalar yPlus_minus_ = 0.0;
+        scalar distriFactor_ = 0.0; // distribution factor/weight
         vector shearU_ = vector(0,0,0);
 
         // Slow but consistent code
         forAll(temp1, index)
         {
-            yPlus = wallDist_[index] / h_; // Not use, just for consistant
+            yPlus_ = wallDist_[index] / h_; // Not use, just for consistant
 
             distriFactor_ = 1.0;
 
@@ -234,8 +235,8 @@ vector waveCurrent::currentU
 
             if (index > 0) // Skip the first temp1 entry
             {
-                yPlus_minus = wallDist_[index-1] / h_; // Not use, just for consistant
-                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus - yPlus_minus);
+                yPlus_minus_ = wallDist_[index-1] / h_; // Not use, just for consistant
+                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus_ - yPlus_minus_);
             }
 
             if (cellC_[index] == x)
@@ -256,16 +257,17 @@ vector waveCurrent::currentU
         temp1 *=scalar(0.0);
         temp2 *=scalar(0.0);
         scalar yPlus_ = 0.0;
-        scalar distriFactor = 0.0; // distribution factor/weight
+        scalar yPlus_minus_ = 0.0;
+        scalar distriFactor_ = 0.0; // distribution factor/weight
 
-        scalar ksPlus_= ks_* U_ / nu_;
+        scalar ksPlus_= ks_* U_.x() / nu_;
         scalar deltayPlus_ = 0.9*(Foam::sqrt(ksPlus_)-ksPlus_*Foam::exp(-ksPlus_/6.0));
         vector shearU_ = vector(0,0,0);
 
         // Slow but consistent code
         forAll(temp1, index)
         {
-            yPlus = wallDist_[index] * U_ / nu_;
+            yPlus_ = wallDist_[index] * U_.x() / nu_;
 
             distriFactor_ = 1.0/(1.0+Foam::sqrt(1.0+4.0*Foam::pow(kappa_,2.0)*Foam::pow(yPlus_+deltayPlus_,2.0) \ 
                         *Foam::pow(1.0-Foam::exp(-(yPlus_+deltayPlus_)/Ad_),2.0)));
@@ -277,8 +279,8 @@ vector waveCurrent::currentU
 
             if (index > 0) // Skip the first temp1 entry
             {
-                yPlus_minus = wallDist_[index-1] * U_ / nu_;
-                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus - yPlus_minus);
+                yPlus_minus_ = wallDist_[index-1] * U_.x() / nu_;
+                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus_ - yPlus_minus_);
             }
 
             if (cellC_[index] == x)
@@ -304,7 +306,7 @@ vector waveCurrent::waveNumberOne
     const scalar h, // water depth
     const scalar T, // wave period
     const scalar Us, // surface velocity in x direction
-    const scalar Ub, // bottom velocity in x direction
+    const scalar Ub // bottom velocity in x direction
 ) const
 {
     scalar k1_x = k_.x(); // Initial guess of wave number
@@ -313,7 +315,7 @@ vector waveCurrent::waveNumberOne
 
     for (int i=1; i<=1000; i++)
     {
-        dummy = (G_*k1_x / dummy - vorticity) * tanh(k1_x * h);
+        dummy = (mag(g_)*k1_x / dummy - vorticity) * tanh(k1_x * h);
         k1_x = (omega_ - dummy) / Us;
     }
 
