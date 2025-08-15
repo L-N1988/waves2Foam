@@ -24,6 +24,7 @@ License
 
 \*---------------------------------------------------------------------------*/
 
+#include <functional> // For std::function
 #include "waveCurrent.H"
 #include "addToRunTimeSelectionTable.H"
 #include "wallDist.H"
@@ -301,6 +302,34 @@ vector waveCurrent::currentU
     }
 }
 
+// Helper function for solving wavenumber one
+scalar waveCurrent::secant_method(std::function<scalar(scalar)> func, scalar a, scalar b) const 
+{
+    double tol = 1e-6;
+    int max_iter = 1000;
+    scalar fa = func(a);
+    scalar fb = func(b);
+    for (int i = 0; i < max_iter; ++i) {
+        if (abs(fa - fb) < 1e-10) { // Avoid division by zero
+            return (a + b) / 2.0; // Approximate
+        }
+        scalar c = (a * fb - b * fa) / (fb - fa);
+        scalar fc = func(c);
+        if (abs(fc) < tol) {
+            return c;
+        }
+        if (fa * fc < 0) {
+            b = c;
+            fb = fc;
+        } else {
+            a = c;
+            fa = fc;
+        }
+    }
+    // If no convergence, return approximation
+    return (a + b) / 2.0;
+}
+
 vector waveCurrent::waveNumberOne
 (
     const scalar h, // water depth
@@ -309,17 +338,30 @@ vector waveCurrent::waveNumberOne
     const scalar Ub // bottom velocity in x direction
 ) const
 {
-    scalar k1_x = k_.x(); // Initial guess of wave number
-    scalar dummy = omega_ - k1_x * Us; // Only for x direction condition
+    scalar G = mag(g_);
+    scalar k0 = k_.x(); // Initial guess of wave number
     scalar vorticity = (Us - Ub) / h;
 
-    for (int i=1; i<=1000; i++)
-    {
-        dummy = (mag(g_)*k1_x / dummy - vorticity) * tanh(k1_x * h);
-        k1_x = (omega_ - dummy) / Us;
+    // Dispersion equation (lambda function)
+    auto dispersion_eq = [=](scalar k) -> scalar {
+        return pow(omega_ - k * Us, 2) -
+               (G * k - vorticity * (omega_ - k * Us)) * tanh(k * h);
+    };
+
+    // Find solution in range [a, b]
+    scalar a = k0 * 0.1;
+    scalar b = k0 * 10.0;
+    // Expand search range if not cross zero point
+    if (dispersion_eq(a) * dispersion_eq(b) > 0) {
+        if (dispersion_eq(k0) < 0) {
+            a = k0 * 0.01;
+        } else {
+            b = k0 * 100.0;
+        }
     }
 
-    return vector(k1_x, 0, 0);
+    k1x = secant_method(dispersion_eq, a, b)
+    return vector(k1x, 0, 0);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //

@@ -108,6 +108,8 @@ protected:
 
         scalar factor(const scalar&) const;
 
+        scalar secant_method(std::function<scalar(scalar)>, scalar, scalar) const;
+
         virtual vector currentU(const point&, const scalar&) const;
 
         virtual vector waveNumberOne
