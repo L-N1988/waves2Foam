@@ -211,44 +211,25 @@ vector waveCurrent::currentU
         return U_;
     } else if (currentType_ == "linear")
     {
-        // linear distributed current velocity, bottom is zero, top is 2U_
-        volScalarField temp1=wallDist_;
-        volScalarField temp2=wallDist_;
-
-        temp1 *=scalar(0.0);
-        temp2 *=scalar(0.0);
-        scalar yPlus_ = 0.0;
-        scalar yPlus_minus_ = 0.0;
-        scalar distriFactor_ = 0.0; // distribution factor/weight
+        // linear distributed current velocity, bottom is zero, top is U_
         vector shearU_ = vector(0,0,0);
 
         // Slow but consistent code
-        forAll(temp1, index)
+        forAll(cellC_, index)
         {
-            yPlus_ = wallDist_[index] / h_; // Not use, just for consistant
-
-            distriFactor_ = 1.0;
-
-            // https://www.tfd.chalmers.se/~hani/kurser/OS_CFD_2021/KorayDenizGoral/Report_KorayDenizGoral.pdf
-            // page 47 line 147 code is wrong, 
-            // temp1[0] or say temp[0] should be zero instead of vanDriest_(approx 1).
-            temp2[index] = distriFactor_;
-
-            if (index > 0) // Skip the first temp1 entry
+            if (cellC_[index] == x) // Only apply for submerged cells (alpha = 1), not for partially filled (0 < alpha < 1) or empty cells (alpha = 0)
             {
-                yPlus_minus_ = wallDist_[index-1] / h_; // Not use, just for consistant
-                temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus_ - yPlus_minus_);
-            }
-
-            if (cellC_[index] == x)
-            {
-                shearU_ = U_*temp1[index];
-                return shearU_;
+                // The partially filled cells can nerver reached here,
+                // since the point x are re-calculated based on negative (wet) portion cells,
+                // which can not find matched centroid of any cell in mesh.
+                // The input point x comes from line 125 relaxationSchemeSpatial.C:
+                // UTarget = waveProps_->U(lc.centreNeg(), mesh_.time().value());
+                // lc means local cell, Neg means wet portion
+                shearU_ = U_ * wallDist_[index] / h_;
+                break;
             }
         }
-        // Never reach here
-        FatalErrorInFunction
-            << "Bad mesh, can not find cell at x = " << x << "." << exit(FatalError);
+        return shearU_;
     } else if (currentType_ == "log")
     {
         // linear distributed current velocity, bottom is zero, top is 2U_
@@ -271,11 +252,9 @@ vector waveCurrent::currentU
             yPlus_ = wallDist_[index] * U_.x() / nu_;
 
             distriFactor_ = 1.0/(1.0+Foam::sqrt(1.0+4.0*Foam::pow(kappa_,2.0)*Foam::pow(yPlus_+deltayPlus_,2.0) \ 
-                        *Foam::pow(1.0-Foam::exp(-(yPlus_+deltayPlus_)/Ad_),2.0)));
+                        *Foam::pow(1.0-Foam::exp(-(yPlus_+deltayPlus_)/Ad_),2.0))); // vanDriest_ factor
 
-            // https://www.tfd.chalmers.se/~hani/kurser/OS_CFD_2021/KorayDenizGoral/Report_KorayDenizGoral.pdf
-            // page 47 line 147 code is wrong, 
-            // temp1[0] or say temp[0] should be zero instead of vanDriest_(approx 1).
+            temp1[index] = distriFactor_; // near bed vanDriest_(approx 1).
             temp2[index] = distriFactor_;
 
             if (index > 0) // Skip the first temp1 entry
@@ -284,15 +263,13 @@ vector waveCurrent::currentU
                 temp1[index] = temp1[index-1] + 0.5*(temp2[index] + temp2[index-1])*(yPlus_ - yPlus_minus_);
             }
 
-            if (cellC_[index] == x)
+            if (cellC_[index] == x) // Ignore the cells with 0 <= alpha < 1
             {
-                shearU_ = 2.0*U_*temp1[index];
-                return shearU_;
+                shearU_ = 2.0*U_*temp1[index]; // Only alpha = 1 cells have non-zero current velocity
+                break;
             }
         }
-        // Never reach here
-        FatalErrorInFunction
-            << "Bad mesh, can not find current velocity about cell at x = " << x << "." << exit(FatalError);
+        return shearU_;
     } else 
     {
         // Raise error, invalid current type.
@@ -360,7 +337,7 @@ vector waveCurrent::waveNumberOne
         }
     }
 
-    k1x = secant_method(dispersion_eq, a, b)
+    scalar k1x = secant_method(dispersion_eq, a, b);
     return vector(k1x, 0, 0);
 }
 
