@@ -21,6 +21,7 @@ $(waveTheories)/$(waveCurrent)/waveCurrent.C
 /* Current type */
 current=current
 $(waveTheories)/$(current)/potentialCurrent/potentialCurrent.C
+$(waveTheories)/$(current)/shearCurrent/shearCurrent.C
 
 /* Solitary type */
 solitary=solitary
