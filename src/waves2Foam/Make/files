@@ -22,6 +22,7 @@ $(waveTheories)/$(waveCurrent)/waveCurrent.C
 current=current
 $(waveTheories)/$(current)/potentialCurrent/potentialCurrent.C
 $(waveTheories)/$(current)/shearCurrent/shearCurrent.C
+$(waveTheories)/$(current)/logCurrent/logCurrent.C
 
 /* Solitary type */
 solitary=solitary

@@ -6,6 +6,7 @@ $(waveProp)/setWaveProperties.C
 current=current
 $(waveProp)/$(current)/potentialCurrentProperties/potentialCurrentProperties.C
 $(waveProp)/$(current)/shearCurrentProperties/shearCurrentProperties.C
+$(waveProp)/$(current)/logCurrentProperties/logCurrentProperties.C
 
 /* Wave current type */
 waveCurrent=waveCurrent
