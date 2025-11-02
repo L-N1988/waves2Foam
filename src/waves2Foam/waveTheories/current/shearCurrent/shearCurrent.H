@@ -75,16 +75,16 @@ class shearCurrent
 protected:
 
     // Protected data
-        vector U_;
-	scalar h_; // water depth
-        scalar Tsoft_;
-	const volScalarField& wallDist_;
-        const volVectorField& cellC_;
-        scalar localSeaLevel_;
+    vector U_;
+    scalar h_; // water depth
+    scalar Tsoft_;
+    const volScalarField& wallDist_;
+    const volVectorField& cellC_;
+    scalar localSeaLevel_;
 
     // Protected member functions
 
-        scalar factor(const scalar&) const;
+    scalar factor(const scalar&) const;
 public:
 
     //- Runtime type information

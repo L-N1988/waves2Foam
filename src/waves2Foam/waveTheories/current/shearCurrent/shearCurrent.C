@@ -125,7 +125,6 @@ vector shearCurrent::U
     // linear distributed current velocity, bottom is zero, top is U_
     vector shearU_ = vector(0,0,0);
 
-    // Slow but consistent code
     forAll(cellC_, index)
     {
         if (cellC_[index] == x) // Only apply for submerged cells (alpha = 1), not for partially filled (0 < alpha < 1) or empty cells (alpha = 0)
