@@ -8,7 +8,7 @@ settings="settings"
 
 if [ ! -d "$sourceLib" ]
 then
-    mkdir $sourceLib
+    mkdir -p $sourceLib
 fi
 
 
@@ -97,7 +97,7 @@ ocw="OceanWave3D-Fortran90"
 # Create output directory for OceanWave3D
 if [ ! -d "bin" ]
 then
-    mkdir bin
+    mkdir -p bin
 fi
 
 # Check-out the git-repository
@@ -106,10 +106,6 @@ then
     echo ""
     echo "Cloning the OceanWave3D git repository ..."
     git clone https://github.com/boTerpPaulsen/OceanWave3D-Fortran90.git  
-
-    # Copy the compilation settings for OCW3D
-    cp $settings/oceanWave3DSettings/common.mk $ocw/.
-    cp $settings/oceanWave3DSettings/makefile $ocw/.
 else
     echo ""
     echo "Pull changes from the OceanWave3D git repository ..."
@@ -137,6 +133,10 @@ else
 
     cd $OLDPWD
 fi
+
+# Copy the compilation settings for OCW3D
+cp $settings/oceanWave3DSettings/common.mk $ocw/.
+cp $settings/oceanWave3DSettings/makefile $ocw/.
 
 # Check for the correct environmental variables
 if [ -z "$WAVES_LIBBIN" ]

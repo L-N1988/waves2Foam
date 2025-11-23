@@ -88,4 +88,22 @@ doc/Doxygen/DTAGS
 
 .vscode
 *diffChange.sh
+
+ThirdParty/OceanWave3D-Fortran90/
+ThirdParty/SPARSKIT2/
+ThirdParty/fenton4Foam/common_variables.mod
+ThirdParty/lapack-3.3.1/
+applications/utilities/postProcessing/postProcessWaves2Foam/Make/options
+applications/utilities/preProcessing/faceSetToSTL/Make/options
+applications/utilities/preProcessing/setWaveField/Make/options
+applications/utilities/preProcessing/waveGaugesNProbes/Make/options
+bin/bashrc
+src/waves2Foam/Make/options
+src/waves2FoamGABC/Make/options
+src/waves2FoamMooring/Make/options
+src/waves2FoamPorosity/Make/options
+src/waves2FoamProcessing/Make/options
+src/waves2FoamSampling/Make/options
+src/waves2FoamSampling1712/Make/options
+src/waves2FoamSampling2206/Make/options
 # end-of-file
